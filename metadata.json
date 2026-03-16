@@ -1,0 +1,5 @@
+{
+  "name": "LexRAG",
+  "description": "A Secure Multi-Tenant RAG system for Corporate Legal Document Analysis.",
+  "requestFramePermissions": []
+}

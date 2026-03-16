@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+
+  backend:
+    build: ./backend
+    container_name: lexrag-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - redis
+      - chromadb
+    networks:
+      - lexrag-net
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-alpine
+    container_name: lexrag-frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - backend
+    networks:
+      - lexrag-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: lexrag-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - lexrag-net
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:0.5.3
+    container_name: lexrag-chromadb
+    ports:
+      - "8001:8000"
+    networks:
+      - lexrag-net
+    volumes:
+      - chroma-data:/chroma/chroma
+    restart: unless-stopped
+
+networks:
+  lexrag-net:
+    driver: bridge
+
+volumes:
+  redis-data:
+  chroma-data:
