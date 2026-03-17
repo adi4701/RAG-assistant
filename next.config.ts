@@ -22,35 +22,59 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['motion'],
   async rewrites() {
-    return [
-      {
-        source: '/lexrag-app',
-        destination: 'http://localhost:5173/lexrag-app/',
-      },
-      {
-        source: '/lexrag-app/:path*',
-        destination: 'http://localhost:5173/lexrag-app/:path*',
-      },
-      {
-        source: '/src/:path*',
-        destination: 'http://localhost:5173/src/:path*',
-      },
-      {
-        source: '/@vite/:path*',
-        destination: 'http://localhost:5173/@vite/:path*',
-      },
-      {
-        source: '/@react-refresh',
-        destination: 'http://localhost:5173/@react-refresh',
-      },
-      {
-        source: '/node_modules/:path*',
-        destination: 'http://localhost:5173/node_modules/:path*',
-      },
+    const isDev = process.env.NODE_ENV === 'development';
+    
+    const apiRewrites = [
       {
         source: '/api/:path*',
         destination: 'http://localhost:8000/:path*',
       }
+    ];
+
+    if (isDev) {
+      return [
+        {
+          source: '/lexrag-app',
+          destination: 'http://localhost:5173/lexrag-app/',
+        },
+        {
+          source: '/lexrag-app/:path*',
+          destination: 'http://localhost:5173/lexrag-app/:path*',
+        },
+        {
+          source: '/src/:path*',
+          destination: 'http://localhost:5173/src/:path*',
+        },
+        {
+          source: '/@vite/:path*',
+          destination: 'http://localhost:5173/@vite/:path*',
+        },
+        {
+          source: '/@react-refresh',
+          destination: 'http://localhost:5173/@react-refresh',
+        },
+        {
+          source: '/node_modules/:path*',
+          destination: 'http://localhost:5173/node_modules/:path*',
+        },
+        ...apiRewrites
+      ];
+    }
+
+    return [
+      {
+        source: '/lexrag-app',
+        destination: '/lexrag-app/index.html',
+      },
+      {
+        source: '/lexrag-app/',
+        destination: '/lexrag-app/index.html',
+      },
+      {
+        source: '/lexrag-app/:path*',
+        destination: '/lexrag-app/index.html',
+      },
+      ...apiRewrites
     ];
   },
   webpack: (config, {dev}) => {

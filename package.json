@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"next dev\" \"cd lexrag/frontend && npm install && npm run dev\" \"cd lexrag/backend && pip3 install -r requirements.txt && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload\"",
-    "build": "next build",
-    "start": "next start",
+    "build": "cd lexrag/frontend && npm install --include=dev && npm run build && mkdir -p ../../public/lexrag-app && cp -r dist/* ../../public/lexrag-app/ && cd ../.. && next build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static",
+    "start": "node server.ts",
     "lint": "eslint .",
     "clean": "next clean"
   },
