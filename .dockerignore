@@ -1,0 +1,8 @@
+node_modules
+.next
+dist
+lexrag/frontend/dist
+lexrag/frontend/node_modules
+*.log
+.env
+.env.local
