@@ -56,6 +56,12 @@ function AppShell() {
           </button>
         )}
         
+        <div className="absolute top-3 right-3 z-20">
+          <a href="/lexrag-app/" className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 text-sm font-medium">
+            Open New LexRAG UI
+          </a>
+        </div>
+
         <ChatInterface />
 
         {/* Mobile Toggle */}
@@ -70,12 +76,8 @@ function AppShell() {
   );
 }
 
+import { redirect } from 'next/navigation';
+
 export default function App() {
-  return (
-    <ToastProvider>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
-    </ToastProvider>
-  );
+  redirect('/lexrag-app/');
 }
