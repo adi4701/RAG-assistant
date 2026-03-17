@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, X, Plus, Loader2, ChevronDown, FolderOpen } from 'lucide-react';
 import { useAuth } from './AuthContext';
@@ -33,11 +33,11 @@ export default function DocumentSidebar({ onDocumentUploaded }) {
   const [panelOpen,    setPanelOpen]    = useState(true);
 
   const canUpload    = user?.role !== 'readonly';
-  const permitted    = DOC_TYPES.filter(t => t.roles.includes(user?.role || 'readonly'));
+  const permitted    = useMemo(() => DOC_TYPES.filter(t => t.roles.includes(user?.role || 'readonly')), [user?.role]);
 
   useEffect(() => {
     if (!docType && permitted.length > 0) setDocType(permitted[0].value);
-  }, [user?.role]);
+  }, [docType, permitted]);
 
   const fetchDocs = useCallback(async () => {
     try {
@@ -46,7 +46,7 @@ export default function DocumentSidebar({ onDocumentUploaded }) {
       setDocuments(data);
     } catch { showToast('Failed to load documents', 'error'); }
     finally { setLoadingDocs(false); }
-  }, [user?.access_token]);
+  }, [user?.access_token, showToast]);
 
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
@@ -131,7 +131,7 @@ export default function DocumentSidebar({ onDocumentUploaded }) {
                     {/* File list */}
                     <AnimatePresence>
                       {files.map((f, i) => (
-                        <motion.div key={i}
+                        <motion.div key={`file-${f.name}-${f.size}-${i}`}
                           initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
                           className="flex items-center gap-2 text-xs bg-obsidian-900/50 rounded-lg p-2">
                           <FileText size={11} className="text-gold-400 shrink-0" />
@@ -178,7 +178,7 @@ export default function DocumentSidebar({ onDocumentUploaded }) {
           ) : (
             <AnimatePresence>
               {documents.map((doc, i) => (
-                <motion.div key={doc.doc_id}
+                <motion.div key={doc.doc_id || `doc-${i}`}
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                   className="glass-card p-3 flex items-start gap-2.5">
                   <FileText size={13} className="text-gold-400 shrink-0 mt-0.5" />

@@ -1,13 +1,26 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from config import settings
 from routers import auth, documents, query
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("lexrag")
 
 app = FastAPI(
     title="LexRAG API",
     description="Secure Multi-Tenant RAG for Corporate Legal Documents",
     version="1.0.0",
 )
+
+@app.on_event("startup")
+async def startup_event():
+    if not settings.OPENAI_API_KEY:
+        logger.warning("OPENAI_API_KEY is not set. RAG features will not work.")
+    else:
+        logger.info("OPENAI_API_KEY is configured.")
 
 app.add_middleware(
     CORSMiddleware,

@@ -52,7 +52,7 @@ function EmptyState({ onExample }) {
           <motion.button key={i} onClick={() => onExample(e)}
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
             className="glass-card px-4 py-3 text-left text-sm text-platinum-300 hover:text-gold-400 transition-colors">
-            "{e}"
+            &quot;{e}&quot;
           </motion.button>
         ))}
       </div>

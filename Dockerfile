@@ -5,6 +5,7 @@ FROM node:20-slim AS builder
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
+    python3-venv \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,14 +20,17 @@ COPY lexrag/backend/requirements.txt ./lexrag/backend/
 RUN npm install
 RUN cd lexrag/frontend && npm install
 
-# Install Python dependencies (globally for this container)
-RUN pip3 install --no-cache-dir -r lexrag/backend/requirements.txt --break-system-packages
+# Create a virtual environment for Python dependencies
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies in the virtual environment
+RUN pip install --no-cache-dir -r lexrag/backend/requirements.txt
 
 # Copy the rest of the source code
 COPY . .
 
 # Build the application
-# This will build Vite, Next.js, and move everything into .next/standalone
 RUN npm run build
 
 # --- Production Stage ---
@@ -35,7 +39,6 @@ FROM node:20-slim
 # Install Python runtime
 RUN apt-get update && apt-get install -y \
     python3 \
-    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -45,17 +48,18 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/lexrag/backend ./lexrag/backend
+COPY --from=builder /app/entrypoint.js ./entrypoint.js
 
-# Copy the Python packages from builder
-# (This is a bit crude but works for standard pip installs)
-COPY --from=builder /usr/local/lib/python3.11/dist-packages /usr/local/lib/python3.11/dist-packages
+# Copy the virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=10000
+ENV PORT=3000
 
-# Expose the port Render expects
-EXPOSE 10000
+# Expose the port AI Studio expects
+EXPOSE 3000
 
 # Start the entrypoint script
 CMD ["node", "entrypoint.js"]
