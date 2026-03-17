@@ -35,7 +35,7 @@ def _sse(data: dict) -> str:
 
 
 @router.post("/stream")
-async def query_stream(
+def query_stream(
     request: QueryRequest,
     td: TokenData = Depends(_decode_token),
 ):
@@ -45,7 +45,7 @@ async def query_stream(
     # ── Step 1: Redis semantic cache check ──────────────────────────────────
     cached = get_cached(request.query, tenant_id)
     if cached:
-        async def _cached_stream():
+        def _cached_stream():
             yield _sse({"type": "token", "content": cached["answer"]})
             yield _sse(
                 {
@@ -71,7 +71,7 @@ async def query_stream(
     )
 
     if not chunks:
-        async def _no_docs():
+        def _no_docs():
             msg = "Insufficient documentary evidence in the provided context."
             yield _sse({"type": "token", "content": msg})
             yield _sse({"type": "citations", "citations": [], "cached": False})
@@ -86,7 +86,7 @@ async def query_stream(
     # ── Step 3: GPT-4o streaming generation + citation validation ────────────
     full_response: list[str] = []
 
-    async def _event_stream():
+    def _event_stream():
         for token in generate_stream(request.query, chunks):
             full_response.append(token)
             yield _sse({"type": "token", "content": token})

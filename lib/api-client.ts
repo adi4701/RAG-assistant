@@ -1,4 +1,4 @@
-const BASE = '/api';
+const BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export async function registerUser({ username, password, tenant_id, role }: any) {
   const res = await fetch(`${BASE}/auth/register`, {

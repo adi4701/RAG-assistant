@@ -11,12 +11,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://frontend:5173",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -27,5 +23,5 @@ app.include_router(query.router)
 
 
 @app.get("/health")
-async def health():
+def health():
     return {"status": "ok", "service": "LexRAG", "version": "1.0.0"}

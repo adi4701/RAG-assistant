@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 
 import fitz  # PyMuPDF
 from docx import Document as DocxDocument
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import OpenAI
 import chromadb
 

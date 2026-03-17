@@ -31,7 +31,7 @@ def _decode_token(token: str = Depends(oauth2_scheme)) -> TokenData:
 
 
 @router.post("/upload")
-async def upload_document(
+def upload_document(
     file: UploadFile = File(...),
     doc_type: str = Form(...),
     td: TokenData = Depends(_decode_token),
@@ -55,7 +55,7 @@ async def upload_document(
             status_code=400, detail="Only .pdf and .docx files are supported."
         )
 
-    file_bytes = await file.read()
+    file_bytes = file.file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File exceeds 20 MB limit.")
 
@@ -79,7 +79,7 @@ async def upload_document(
 
 
 @router.get("/list")
-async def list_documents(td: TokenData = Depends(_decode_token)):
+def list_documents(td: TokenData = Depends(_decode_token)):
     docs = list_tenant_documents(td.tenant_id)
     # Filter to permitted doc types
     permitted = set(td.permitted_doc_types or [])

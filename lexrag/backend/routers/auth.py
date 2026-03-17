@@ -41,7 +41,7 @@ def _make_token(username: str, tenant_id: str, role: str) -> str:
 
 
 @router.post("/register", response_model=Token)
-async def register(user: UserCreate):
+def register(user: UserCreate):
     r = _redis()
     key = f"user:{user.username}"
     if r.exists(key):
@@ -69,7 +69,7 @@ async def register(user: UserCreate):
 
 
 @router.post("/login", response_model=Token)
-async def login(user: UserLogin):
+def login(user: UserLogin):
     r = _redis()
     raw = r.get(f"user:{user.username}")
     if not raw:
@@ -91,7 +91,7 @@ async def login(user: UserLogin):
 
 
 @router.get("/roles")
-async def list_roles():
+def list_roles():
     """Helper endpoint for the frontend to display role permissions."""
     return {
         role.value: {
