@@ -63,12 +63,25 @@ def query_stream(
         )
 
     # ── Step 2: Metadata-predicate filtered retrieval ────────────────────────
-    chunks = retrieve_chunks(
-        query=request.query,
-        tenant_id=tenant_id,
-        permitted_doc_types=permitted,
-        top_k=request.top_k,
-    )
+    try:
+        chunks = retrieve_chunks(
+            query=request.query,
+            tenant_id=tenant_id,
+            permitted_doc_types=permitted,
+            top_k=request.top_k,
+        )
+    except ValueError as e:
+        if "OPENAI_API_KEY" in str(e):
+            def _error_stream():
+                yield _sse({"type": "token", "content": f"Error: {str(e)}"})
+                yield _sse({"type": "citations", "citations": [], "cached": False})
+                yield "data: [DONE]\n\n"
+            return StreamingResponse(
+                _error_stream(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+        raise e
 
     if not chunks:
         def _no_docs():

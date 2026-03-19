@@ -108,6 +108,8 @@ def generate_stream(
     Conversation history capped at 10 turns (paper Section III-D).
     Temperature = 0.1 for legal precision.
     """
+    if not settings.OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not configured. Set it in Render's Environment Variables.")
     client = get_openai()
     context = build_context(chunks)
     system_content = SYSTEM_PROMPT_TEMPLATE.format(context=context)

@@ -22,14 +22,23 @@ def get_openai():
     return _openai_client
 
 
+_collection = None
+
 def get_chroma():
     global _chroma_client
     if _chroma_client is None:
-        _chroma_client = chromadb.PersistentClient(path="./chroma_db")
+        if settings.CHROMA_MODE == "http":
+            _chroma_client = chromadb.HttpClient(
+                host=settings.CHROMA_HOST, port=settings.CHROMA_PORT
+            )
+        else:
+            import os
+            os.makedirs(settings.CHROMA_PERSIST_PATH, exist_ok=True)
+            _chroma_client = chromadb.PersistentClient(
+                path=settings.CHROMA_PERSIST_PATH
+            )
     return _chroma_client
 
-
-_collection = None
 
 def get_collection():
     global _collection
@@ -71,6 +80,8 @@ def chunk_text(text: str) -> List[str]:
 
 def embed_texts(texts: List[str]) -> List[List[float]]:
     """Batch embed with text-embedding-3-small (1536 dims)."""
+    if not settings.OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not configured. Set it in Render's Environment Variables.")
     client = get_openai()
     # ChromaDB batch limit safety: embed in batches of 100
     all_embeddings = []
@@ -100,6 +111,8 @@ def ingest_document(
     doc_type: str,
     doc_id: str,
 ) -> Dict[str, Any]:
+    if not settings.OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not configured. Set it in Render's Environment Variables.")
     # 1. Text extraction
     if filename.lower().endswith(".pdf"):
         text = extract_text_pdf(file_bytes)

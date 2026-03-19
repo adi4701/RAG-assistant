@@ -22,7 +22,16 @@ _collection = None
 def get_collection():
     global _chroma_client, _collection
     if _chroma_client is None:
-        _chroma_client = chromadb.PersistentClient(path="./chroma_db")
+        if settings.CHROMA_MODE == "http":
+            _chroma_client = chromadb.HttpClient(
+                host=settings.CHROMA_HOST, port=settings.CHROMA_PORT
+            )
+        else:
+            import os
+            os.makedirs(settings.CHROMA_PERSIST_PATH, exist_ok=True)
+            _chroma_client = chromadb.PersistentClient(
+                path=settings.CHROMA_PERSIST_PATH
+            )
     if _collection is None:
         _collection = _chroma_client.get_or_create_collection(
             name="lexrag_documents",
@@ -32,6 +41,8 @@ def get_collection():
 
 
 def embed_query(query: str) -> List[float]:
+    if not settings.OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not configured. Set it in Render's Environment Variables.")
     client = get_openai()
     response = client.embeddings.create(
         model="text-embedding-3-small", input=[query]
