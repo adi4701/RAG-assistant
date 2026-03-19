@@ -24,12 +24,24 @@ async def startup_event():
     else:
         logger.info("OPENAI_API_KEY is configured.")
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import JSONResponse
+
+class LimitBodySizeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if request.headers.get("content-length"):
+            if int(request.headers["content-length"]) > 25 * 1024 * 1024:
+                return JSONResponse({"detail": "Request too large"}, status_code=413)
+        return await call_next(request)
+
+app.add_middleware(LimitBodySizeMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 app.include_router(auth.router)
@@ -37,39 +49,9 @@ app.include_router(documents.router)
 app.include_router(query.router)
 
 
-import redis
 import chromadb
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 @app.get("/health")
 def health():
-    checks = {
-        "status": "ok",
-        "service": "LexRAG",
-        "version": "1.0.0",
-        "dependencies": {
-            "redis": "unknown",
-            "chromadb": "unknown",
-            "openai_api_key": "configured" if settings.OPENAI_API_KEY and "YOUR_OPENAI_API_KEY_HERE" not in settings.OPENAI_API_KEY else "missing"
-        }
-    }
-    
-    # Check Redis
-    try:
-        r = redis.from_url(settings.REDIS_URL, socket_connect_timeout=1)
-        r.ping()
-        checks["dependencies"]["redis"] = "connected"
-    except Exception as e:
-        checks["dependencies"]["redis"] = f"error: {str(e)}"
-        checks["status"] = "degraded"
-        
-    # Check ChromaDB
-    try:
-        client = chromadb.HttpClient(host=settings.CHROMA_HOST, port=settings.CHROMA_PORT)
-        client.heartbeat()
-        checks["dependencies"]["chromadb"] = "connected"
-    except Exception as e:
-        checks["dependencies"]["chromadb"] = f"error: {str(e)}"
-        checks["status"] = "degraded"
-        
-    return checks
+    return {"status": "ok"}

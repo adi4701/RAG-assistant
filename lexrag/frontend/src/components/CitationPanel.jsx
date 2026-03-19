@@ -4,7 +4,6 @@ import { CheckCircle, AlertTriangle, ChevronDown, Copy } from 'lucide-react';
 import { useToast } from './Toast';
 
 export default function CitationPanel({ citations, cached }) {
-  const [open]       = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const { showToast } = useToast();
 

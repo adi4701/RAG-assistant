@@ -55,6 +55,10 @@ def upload_document(
             status_code=400, detail="Only .pdf and .docx files are supported."
         )
 
+    content_length = file.headers.get("content-length")
+    if content_length and int(content_length) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File exceeds 20 MB limit.")
+
     file_bytes = file.file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File exceeds 20 MB limit.")

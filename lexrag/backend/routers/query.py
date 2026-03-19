@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -87,6 +87,8 @@ def query_stream(
     full_response: list[str] = []
 
     def _event_stream():
+        # NOTE: generate_stream is synchronous. For production, wrap with
+        # asyncio.to_thread() to avoid blocking the event loop.
         for token in generate_stream(request.query, chunks):
             full_response.append(token)
             yield _sse({"type": "token", "content": token})
@@ -98,6 +100,9 @@ def query_stream(
         citations = validate_citations(cited_uuids, chunks)
 
         # Store in Redis cache
+        # NOTE: This is called after the stream completes. If the client
+        # disconnects mid-stream, this is never called. This is intentional
+        # so we don't cache partial responses.
         set_cached(request.query, tenant_id, {"answer": answer, "citations": citations})
 
         yield _sse({"type": "citations", "citations": citations, "cached": False})

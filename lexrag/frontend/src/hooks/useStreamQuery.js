@@ -4,11 +4,14 @@ import { streamQuery } from '../api/client';
 export function useStreamQuery(token) {
   const [messages,    setMessages]    = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const isStreamingRef  = useRef(false);
   const streamingIdRef  = useRef(null);
   const accumulatedRef  = useRef('');
 
   const send = useCallback((query) => {
-    if (!query.trim() || isStreaming) return;
+    if (!query.trim() || isStreamingRef.current) return;
+    isStreamingRef.current = true;
+    setIsStreaming(true);
 
     const userMsg = {
       id:        `user-${Date.now()}`,
@@ -34,7 +37,6 @@ export function useStreamQuery(token) {
     };
 
     setMessages((prev) => [...prev, userMsg, placeholder]);
-    setIsStreaming(true);
 
     streamQuery({
       query,
@@ -59,12 +61,14 @@ export function useStreamQuery(token) {
         );
       },
       onDone: () => {
+        isStreamingRef.current = false;
         setIsStreaming(false);
         setMessages((prev) =>
           prev.map((m) => (m.streaming ? { ...m, streaming: false } : m))
         );
       },
       onError: (err) => {
+        isStreamingRef.current = false;
         setIsStreaming(false);
         setMessages((prev) =>
           prev.map((m) =>
@@ -75,7 +79,7 @@ export function useStreamQuery(token) {
         );
       },
     });
-  }, [token, isStreaming]);
+  }, [token]);
 
   const clearMessages = useCallback(() => setMessages([]), []);
 

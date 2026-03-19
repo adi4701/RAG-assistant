@@ -17,7 +17,8 @@ const nextProcess = spawn('node', ['server.js'], {
 // 2. Start Python FastAPI Backend
 const pythonProcess = spawn('python3', ['-m', 'uvicorn', 'main:app', '--host', '0.0.0.0', '--port', '8000'], { 
   stdio: 'inherit',
-  cwd: path.join(__dirname, 'lexrag/backend')
+  cwd: path.join(__dirname, 'lexrag/backend'),
+  env: { ...process.env }
 });
 
 // Handle process termination

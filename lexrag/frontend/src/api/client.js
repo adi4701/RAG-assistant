@@ -69,22 +69,23 @@ export function streamQuery({ query, token, top_k = 5, onToken, onCitations, onD
       let buffer    = '';
 
       const read = async () => {
-        const { done, value } = await reader.read();
-        if (done) { onDone?.(); return; }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const raw = line.slice(6).trim();
-          if (raw === '[DONE]') { onDone?.(); return; }
-          try {
-            const ev = JSON.parse(raw);
-            if (ev.type === 'token')     onToken?.(ev.content);
-            if (ev.type === 'citations') onCitations?.(ev.citations, ev.cached);
-          } catch (_) {}
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) { onDone?.(); return; }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (raw === '[DONE]') { onDone?.(); return; }
+            try {
+              const ev = JSON.parse(raw);
+              if (ev.type === 'token')     onToken?.(ev.content);
+              if (ev.type === 'citations') onCitations?.(ev.citations, ev.cached);
+            } catch (_) {}
+          }
         }
-        read();
       };
       read();
     })

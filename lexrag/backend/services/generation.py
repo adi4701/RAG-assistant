@@ -40,6 +40,8 @@ DOCUMENT CONTEXT:
 CITATION_PATTERN = re.compile(r"\[SOURCE:\s*([a-f0-9]{32})\]", re.IGNORECASE)
 
 
+GPT_MODEL = "gpt-4o"
+
 def build_context(chunks: List[Dict[str, Any]]) -> str:
     parts = []
     for chunk in chunks:
@@ -50,7 +52,8 @@ def build_context(chunks: List[Dict[str, Any]]) -> str:
             f"Similarity: {chunk['similarity']}]"
         )
         parts.append(f"{header}\n{chunk['text']}")
-    return "\n\n{'—'*60}\n\n".join(parts)
+    separator = "\n\n" + ("—" * 60) + "\n\n"
+    return separator.join(parts)
 
 
 def extract_citations(text: str) -> List[str]:
@@ -117,15 +120,18 @@ def generate_stream(
 
     messages.append({"role": "user", "content": query})
 
-    stream = client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages,
-        stream=True,
-        temperature=0.1,
-        max_tokens=2000,
-    )
+    try:
+        stream = client.chat.completions.create(
+            model=GPT_MODEL,
+            messages=messages,
+            stream=True,
+            temperature=0.1,
+            max_tokens=2000,
+        )
 
-    for chunk in stream:
-        delta = chunk.choices[0].delta.content
-        if delta:
-            yield delta
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+    except Exception as e:
+        yield f"\n\n[GENERATION ERROR: {str(e)}]"

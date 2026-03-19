@@ -17,16 +17,18 @@ def get_openai():
     return _openai_client
 
 
+_collection = None
+
 def get_collection():
-    global _chroma_client
+    global _chroma_client, _collection
     if _chroma_client is None:
-        _chroma_client = chromadb.HttpClient(
-            host=settings.CHROMA_HOST, port=settings.CHROMA_PORT
+        _chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    if _collection is None:
+        _collection = _chroma_client.get_or_create_collection(
+            name="lexrag_documents",
+            metadata={"hnsw:space": "cosine"},
         )
-    return _chroma_client.get_or_create_collection(
-        name="lexrag_documents",
-        metadata={"hnsw:space": "cosine"},
-    )
+    return _collection
 
 
 def embed_query(query: str) -> List[float]:
@@ -53,7 +55,7 @@ def retrieve_chunks(
     The $and predicate is evaluated by ChromaDB HNSW before similarity
     scoring — not at the application layer — making it bypass-resistant.
     """
-    if not permitted_doc_types:
+    if not permitted_doc_types or not isinstance(permitted_doc_types, list):
         return []
 
     embedding = embed_query(query)

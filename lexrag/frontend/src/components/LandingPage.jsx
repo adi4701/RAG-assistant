@@ -16,15 +16,17 @@ function TypedText({ strings, className }) {
     const current = el.current;
     if (!current) return;
     let i = 0, si = 0, deleting = false;
+    let timeoutId;
     const tick = () => {
       const word = strings[si % strings.length];
       current.textContent = deleting ? word.slice(0, i--) : word.slice(0, i++);
       let delay = deleting ? 60 : 100;
       if (!deleting && i > word.length) { delay = 2000; deleting = true; }
       if (deleting && i < 0) { i = 0; si++; deleting = false; delay = 400; }
-      setTimeout(tick, delay);
+      timeoutId = setTimeout(tick, delay);
     };
     tick();
+    return () => clearTimeout(timeoutId);
   }, [strings]);
   return (
     <span className={className}>

@@ -1,7 +1,10 @@
 import os
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 from pydantic import Field, validator
 
+# Force load .env file to override empty environment variables
+load_dotenv(".env", override=True)
 
 class Settings(BaseSettings):
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API Key")
@@ -21,6 +24,9 @@ class Settings(BaseSettings):
 
     @validator("OPENAI_API_KEY", pre=True, always=True)
     def validate_openai_key(cls, v):
+        # If the environment variable is empty, try to get it from os.environ (which load_dotenv populated)
+        if not v:
+            v = os.environ.get("OPENAI_API_KEY", "")
         if v is None:
             return ""
         return v
@@ -28,6 +34,5 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         extra = "ignore"
-
 
 settings = Settings()

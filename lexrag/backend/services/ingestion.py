@@ -25,17 +25,20 @@ def get_openai():
 def get_chroma():
     global _chroma_client
     if _chroma_client is None:
-        _chroma_client = chromadb.HttpClient(
-            host=settings.CHROMA_HOST, port=settings.CHROMA_PORT
-        )
+        _chroma_client = chromadb.PersistentClient(path="./chroma_db")
     return _chroma_client
 
 
+_collection = None
+
 def get_collection():
-    return get_chroma().get_or_create_collection(
-        name="lexrag_documents",
-        metadata={"hnsw:space": "cosine"},
-    )
+    global _collection
+    if _collection is None:
+        _collection = get_chroma().get_or_create_collection(
+            name="lexrag_documents",
+            metadata={"hnsw:space": "cosine"},
+        )
+    return _collection
 
 
 def extract_text_pdf(file_bytes: bytes) -> str:
@@ -73,7 +76,7 @@ def embed_texts(texts: List[str]) -> List[List[float]]:
     all_embeddings = []
     batch_size = 100
     for i in range(0, len(texts), batch_size):
-        batch = texts[i : i + batch_size]
+        batch = [t[:6000] for t in texts[i : i + batch_size]]
         response = client.embeddings.create(
             model="text-embedding-3-small", input=batch
         )
@@ -81,12 +84,12 @@ def embed_texts(texts: List[str]) -> List[List[float]]:
     return all_embeddings
 
 
-def make_chunk_uuid(chunk_text: str, doc_id: str) -> str:
+def make_chunk_uuid(text: str, doc_id: str) -> str:
     """
     Deterministic SHA-256 UUID from chunk content + doc_id.
     Stable across re-ingestion events (paper Section III-B).
     """
-    raw = (chunk_text + doc_id).encode("utf-8")
+    raw = (text + doc_id).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()[:32]
 
 
@@ -106,7 +109,11 @@ def ingest_document(
         raise ValueError("Unsupported file type. Upload PDF or DOCX.")
 
     if not text.strip():
-        raise ValueError("Document appears to be empty or unreadable.")
+        raise ValueError(
+            "Document appears to be empty or image-only (scanned). "
+            "LexRAG requires text-based PDFs. "
+            "Use a PDF with selectable text."
+        )
 
     # 2. Recursive chunking
     chunks = chunk_text(text)
@@ -118,6 +125,8 @@ def ingest_document(
 
     # 4. Dense embeddings
     embeddings = embed_texts(chunks)
+    if not embeddings:
+        raise ValueError("Embedding generation produced no results.")
 
     # 5. Upsert into ChromaDB with metadata payload
     collection = get_collection()

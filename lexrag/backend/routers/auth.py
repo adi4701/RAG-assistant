@@ -1,9 +1,8 @@
 import hashlib
 import json
-from datetime import datetime, timedelta
-from typing import Optional
+import sqlite3
+from datetime import datetime, timedelta, timezone
 
-import redis
 from fastapi import APIRouter, HTTPException
 from jose import jwt
 
@@ -18,14 +17,16 @@ from models.schemas import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-
-def _redis():
-    return redis.from_url(settings.REDIS_URL, decode_responses=True)
-
+def _get_db():
+    conn = sqlite3.connect("users.db")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT, tenant_id TEXT, role TEXT)"
+    )
+    return conn
 
 def _hash_pw(password: str) -> str:
+    # TODO: Replace with bcrypt in production.
     return hashlib.sha256(password.encode()).hexdigest()
-
 
 def _make_token(username: str, tenant_id: str, role: str) -> str:
     permitted = ROLE_DOC_PERMISSIONS[UserRole(role)]
@@ -34,30 +35,26 @@ def _make_token(username: str, tenant_id: str, role: str) -> str:
         "tenant_id": tenant_id,
         "role": role,
         "permitted_doc_types": permitted,
-        "exp": datetime.utcnow()
+        "exp": datetime.now(timezone.utc)
         + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-
 @router.post("/register", response_model=Token)
 def register(user: UserCreate):
-    r = _redis()
-    key = f"user:{user.username}"
-    if r.exists(key):
+    conn = _get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT username FROM users WHERE username = ?", (user.username,))
+    if cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=400, detail="Username already registered.")
 
-    r.set(
-        key,
-        json.dumps(
-            {
-                "username": user.username,
-                "password": _hash_pw(user.password),
-                "tenant_id": user.tenant_id,
-                "role": user.role.value,
-            }
-        ),
+    cursor.execute(
+        "INSERT INTO users (username, password, tenant_id, role) VALUES (?, ?, ?, ?)",
+        (user.username, _hash_pw(user.password), user.tenant_id, user.role.value),
     )
+    conn.commit()
+    conn.close()
 
     return Token(
         access_token=_make_token(user.username, user.tenant_id, user.role.value),
@@ -67,28 +64,28 @@ def register(user: UserCreate):
         username=user.username,
     )
 
-
 @router.post("/login", response_model=Token)
 def login(user: UserLogin):
-    r = _redis()
-    raw = r.get(f"user:{user.username}")
-    if not raw:
+    conn = _get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT password, tenant_id, role FROM users WHERE username = ?", (user.username,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
         raise HTTPException(status_code=401, detail="Invalid credentials.")
 
-    stored = json.loads(raw)
-    if stored["password"] != _hash_pw(user.password):
+    stored_password, tenant_id, role = row
+    if stored_password != _hash_pw(user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
 
     return Token(
-        access_token=_make_token(
-            stored["username"], stored["tenant_id"], stored["role"]
-        ),
+        access_token=_make_token(user.username, tenant_id, role),
         token_type="bearer",
-        role=stored["role"],
-        tenant_id=stored["tenant_id"],
-        username=stored["username"],
+        role=role,
+        tenant_id=tenant_id,
+        username=user.username,
     )
-
 
 @router.get("/roles")
 def list_roles():
