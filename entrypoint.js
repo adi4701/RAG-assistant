@@ -1,43 +1,39 @@
 const { spawn } = require('child_process');
-const path = require('path');
 
-// Render and other platforms provide the PORT environment variable
-const PORT = process.env.PORT || 3000;
-process.env.PORT = PORT; 
+// Render sets PORT=10000. Both services must agree on this one port.
+// We run FastAPI only — it serves the API on $PORT.
+// Frontend is deployed separately as a Render Static Site.
+const port = process.env.PORT || 10000;
 
-console.log(`[Entrypoint] Starting LexRAG on port ${PORT}...`);
+console.log(`[Entrypoint] Starting LexRAG backend on port ${port}...`);
 
-// 1. Start Next.js Standalone Server
-// In the production Docker image, this script sits alongside the Next.js server.js
-const nextProcess = spawn('node', ['server.js'], { 
-  stdio: 'inherit',
-  env: { ...process.env }
+const api = spawn(
+  'uvicorn',
+  [
+    'main:app',
+    '--host', '0.0.0.0',
+    '--port', String(port),
+    '--no-reload',
+    '--workers', '1',
+  ],
+  {
+    cwd: process.env.BACKEND_DIR || '/app',
+    env: { ...process.env },
+    stdio: 'inherit',
+  }
+);
+
+api.on('error', (err) => {
+  console.error('[Entrypoint] Failed to start:', err.message);
+  process.exit(1);
 });
 
-// 2. Start Python FastAPI Backend
-const pythonProcess = spawn('python3', ['-m', 'uvicorn', 'main:app', '--host', '0.0.0.0', '--port', '8000'], { 
-  stdio: 'inherit',
-  cwd: path.join(__dirname, 'lexrag/backend'),
-  env: { ...process.env }
+api.on('exit', (code) => {
+  console.log(`[Entrypoint] Exited with code ${code}`);
+  process.exit(code || 0);
 });
 
-// Handle process termination
-const cleanup = () => {
+process.on('SIGTERM', () => {
   console.log('[Entrypoint] Shutting down...');
-  nextProcess.kill();
-  pythonProcess.kill();
-  process.exit();
-};
-
-process.on('SIGINT', cleanup);
-process.on('SIGTERM', cleanup);
-
-nextProcess.on('exit', (code) => {
-  console.log(`[Next.js] Exited with code ${code}`);
-  if (code !== 0) cleanup();
-});
-
-pythonProcess.on('exit', (code) => {
-  console.log(`[Python] Exited with code ${code}`);
-  if (code !== 0) cleanup();
+  api.kill('SIGTERM');
 });

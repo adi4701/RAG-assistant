@@ -19,6 +19,7 @@ def get_openai():
 
 _collection = None
 
+
 def get_collection():
     global _chroma_client, _collection
     if _chroma_client is None:
@@ -27,8 +28,8 @@ def get_collection():
                 host=settings.CHROMA_HOST, port=settings.CHROMA_PORT
             )
         else:
-            import os
-            os.makedirs(settings.CHROMA_PERSIST_PATH, exist_ok=True)
+            import os as _os
+            _os.makedirs(settings.CHROMA_PERSIST_PATH, exist_ok=True)
             _chroma_client = chromadb.PersistentClient(
                 path=settings.CHROMA_PERSIST_PATH
             )
